@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Data RW, RT & Linmas</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f0f4f8; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; }
+        header { background: linear-gradient(135deg, #2563eb, #1e40af); color: white; padding: 25px; text-align: center; }
+        .header-actions { margin-top: 12px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+        nav { display: flex; flex-wrap: wrap; background: #e2e8f0; border-bottom: 1px solid #cbd5e1; }
+        nav button { padding: 14px 24px; border: none; background: transparent; cursor: pointer; font-size: 15px; font-weight: 600; color: #334155; transition: all 0.2s; }
+        nav button.active { background: #fff; color: #1e40af; border-bottom: 3px solid #2563eb; }
+        .tab-content { padding: 25px; display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+        h2 { color: #1e293b; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        form { background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 25px; }
+        .form-row { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; }
+        .form-group { flex: 1; min-width: 180px; }
+        label { display: block; margin-bottom: 6px; font-weight: 500; color: #475569; font-size: 14px; }
+        input, select { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
+        button { padding: 10px 20px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-success { background: #16a34a; color: white; }
+        .btn-success:hover { background: #15803d; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-warning:hover { background: #d97706; }
+        .btn-info { background: #0891b2; color: white; }
+        .btn-info:hover { background: #0e7490; }
+        .btn-reset { background: #64748b; color: white; margin-left: 8px; }
+        .btn-reset:hover { background: #475569; }
+        .search-box { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .search-box input { max-width: 400px; }
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 900px; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+        th { background: #f1f5f9; font-weight: 600; color: #334155; white-space: nowrap; }
+        tr:hover { background: #f8fafc; }
+        .masa-berakhir { color: #dc2626; font-weight: 700; }
+        .actions { white-space: nowrap; }
+        .alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 15px; display: none; }
+        .alert.success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .hidden-input { display: none; }
+        @media print {
+            body { background: #fff; padding: 0; }
+            .container { box-shadow: none; border-radius: 0; }
+            header, nav, form, .search-box, .actions, .header-actions { display: none !important; }
+            .tab-content { display: block !important; }
+            .table-wrapper { overflow: visible; }
+            table { min-width: 100%; }
+            th { background: #eee !important; color: #000; }
+            .masa-berakhir { color: #000 !important; font-weight: normal; }
+        }
+        @media (max-width: 768px) { .form-row { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📋 Aplikasi Data RW, RT & Linmas</h1>
+            <p>Sistem Informasi Pengelolaan Data RW/RT & Linmas Kel.Karang Tengah Kec.Gunung Puyuh</p>
+            <div class="header-actions">
+                <button class="btn-success" onclick="eksporSemuaExcel()">📤 Ekspor Semua ke Excel</button>
+                <button class="btn-info" onclick="dokumenCadangan()">💾 Cadangkan Data</button>
+                <button class="btn-warning" onclick="document.getElementById('pulihkan-file').click()">📂 Pulihkan Data</button>
+                <input type="file" id="pulihkan-file" accept=".json" class="hidden-input">
+            </div>
+        </header>
+
+        <nav>
+            <button class="tab-btn active" data-tab="rw">Data RW</button>
+            <button class="tab-btn" data-tab="rt">Data RT</button>
+            <button class="tab-btn" data-tab="linmas">Data Linmas</button>
+        </nav>
+
+        <!-- TAB DATA RW -->
+        <div class="tab-content active" id="rw">
+            <h2>Data RW</h2>
+            <div class="alert success" id="rw-alert">Data berhasil disimpan!</div>
+            <form id="rw-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>NIK</label>
+                        <input type="text" id="rw-nik" required placeholder="16 Digit NIK">
+                    </div>
+                    <div class="form-group">
+                        <label>Nama Lengkap</label>
+                        <input type="text" id="rw-nama" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Jabatan</label>
+                        <input type="text" id="rw-jabatan" required value="Ketua RW">
+                    </div>
+                    <div class="form-group">
+                        <label>No. RW</label>
+                        <input type="text" id="rw-norw" required placeholder="Contoh: 01">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Pekerjaan</label>
+                        <input type="text" id="rw-pekerjaan" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Alamat</label>
+                        <input type="text" id="rw-alamat" required>
+                    </div>
+                    <div class="form-group">
+                        <label>No. SK Awal</label>
+                        <input type="text" id="rw-skawal" required placeholder="Contoh: SK.01/005/I/2026">
+                    </div>
+                    <div class="form-group">
+                        <label>Masa Berakhir</label>
+                        <input type="date" id="rw-berakhir" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>No. Telepon</label>
+                        <input type="tel" id="rw-telp" required placeholder="08xx-xxxx-xxxx">
+                    </div>
+                    <div class="form-group">
+                        <label>No. Rekening</label>
+                        <input type="text" id="rw-rekening" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">Simpan Data</button>
+                <button type="reset" class="btn-reset" id="rw-reset">Batal Ubah</button>
+            </form>
+            <div class="search-box">
+                <input type="text" id="rw-search" placeholder="🔍 Cari data...">
+                <button class="btn-success" onclick="eksporBagianExcel('rw')">📤 Ekspor Excel</button>
+                <button class="btn-info" onclick="cetakBagian('rw')">🖨️ Cetak Laporan</button>
+            </div>
+            <div class="table-wrapper">
+                <table id="rw-table">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>NIK</th>
+                            <th>Nama</th>
+                            <th>Jabatan</th>
+                            <th>No.RW</th>
+                            <th>Pekerjaan</th>
+                            <th>Alamat</th>
+                            <th>No. SK Awal</th>
+                            <th>Masa Berakhir</th>
+                            <th>No.Telp</th>
+                            <th>No.Rekening</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rw-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB DATA RT -->
+        <div class="tab-content" id="rt">
+            <h2>Data RT</h2>
+            <div class="alert success" id="rt-alert">Data berhasil disimpan!</div>
+            <form id="rt-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>NIK</label>
+                        <input type="text" id="rt-nik" required placeholder="16 Digit NIK">
+                    </div>
+                    <div class="form-group">
+                        <label>Nama Lengkap</label>
+                        <input type="text" id="rt-nama" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Jabatan</label>
+                        <input type="text" id="rt-jabatan" required value="Ketua RT">
+                    </div>
+                    <div class="form-group">
+                        <label>No. RW</label>
+                        <input type="text" id="rt-norw" required placeholder="Contoh: 01">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>No. RT</label>
+                        <input type="text" id="rt-nort" required placeholder="Contoh: 001">
+                    </div>
+                    <div class="form-group">
+                        <label>Pekerjaan</label>
+                        <input type="text" id="rt-pekerjaan" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Alamat</label>
+                        <input type="text" id="rt-alamat" required>
+                    </div>
+                    <div class="form-group">
+                        <label>No. SK Awal</label>
+                        <input type="text" id="rt-skawal" required placeholder="Contoh: SK.01/005/I/2026">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Masa Berakhir</label>
+                        <input type="date" id="rt-berakhir" required>
+                    </div>
+                    <div class="form-group">
+                        <label>No. Telepon</label>
+                        <input type="tel" id="rt-telp" required placeholder="08xx-xxxx-xxxx">
+                    </div>
+                    <div class="form-group">
+                        <label>No. Rekening</label>
+                        <input type="text" id="rt-rekening" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">Simpan Data</button>
+                <button type="reset" class="btn-reset" id="rt-reset">Batal Ubah</button>
+            </form>
+            <div class="search-box">
+                <input type="text" id="rt-search" placeholder="🔍 Cari data...">
+                <button class="btn-success" onclick="eksporBagianExcel('rt')">📤 Ekspor Excel</button>
+                <button class="btn-info" onclick="cetakBagian('rt')">🖨️ Cetak Laporan</button>
+            </div>
+            <div class="table-wrapper">
+                <table id="rt-table">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>NIK</th>
+                            <th>Nama</th>
+                            <th>Jabatan</th>
+                            <th>No.RW</th>
+                            <th>No.RT</th>
+                            <th>Pekerjaan</th>
+                            <th>Alamat</th>
+                            <th>No. SK Awal</th>
+                            <th>Masa Berakhir</th>
+                            <th>No.Telp</th>
+                            <th>No.Rekening</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rt-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB DATA LINMAS -->
+        <div class="tab-content" id="linmas">
+            <h2>Data Linmas</h2>
+            <div class="alert success" id="linmas-alert">Data berhasil disimpan!</div>
+            <form id="linmas-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>NIK</label>
+                        <input type="text" id="linmas-nik" required placeholder="16 Digit NIK">
+                    </div>
+                    <div class="form-group">
+                        <label>Nama Lengkap</label>
+                        <input type="text" id="linmas-nama" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Jabatan</label>
+                        <select id="linmas-jabatan">
+                            <option value="Ketua">Ketua</option>
+                            <option value="Wakil">Wakil</option>
+                            <option value="Sekretaris">Sekretaris</option>
+                            <option value="Bendahara">Bendahara</option>
+                            <option value="Anggota" selected>Anggota</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Wilayah (RT/RW)</label>
+                        <input type="text" id="linmas-wilayah" required placeholder="Contoh: RW 01 / RT 002">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Pekerjaan</label>
+                        <input type="text" id="linmas-pekerjaan" required>
+                    </div>
+                    <div class="form-group">
+                        <label>No. Telepon</label>
+                        <input type="tel" id="linmas-telp" required placeholder="08xx-xxxx-xxxx">
+                    </div>
+                    <div class="form-group">
+                        <label>No. Rekening</label>
+                        <input type="text" id="linmas-rekening" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">Simpan Data</button>
+                <button type="reset" class="btn-reset" id="linmas-reset">Batal Ubah</button>
+            </form>
+            <div class="search-box">
+                <input type="text" id="linmas-search" placeholder="🔍 Cari data...">
+                <button class="btn-success" onclick="eksporBagianExcel('linmas')">📤 Ekspor Excel</button>
+                <button class="btn-info" onclick="cetakBagian('linmas')">🖨️ Cetak Laporan</button>
+            </div>
+            <div class="table-wrapper">
+                <table id="linmas-table">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>NIK</th>
+                            <th>Nama</th>
+                            <th>Jabatan</th>
+                            <th>Wilayah</th>
+                            <th>Pekerjaan</th>
+                            <th>No.Telp</th>
+                            <th>No.Rekening</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="linmas-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let dataRW = JSON.parse(localStorage.getItem('dataRW')) || [];
+        let dataRT = JSON.parse(localStorage.getItem('dataRT')) || [];
+        let dataLinmas = JSON.parse(localStorage.getItem('dataLinmas')) || [];
+        let editIndex = { rw: null, rt: null, linmas: null };
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        function simpanData() {
+            localStorage.setItem('dataRW', JSON.stringify(dataRW));
+            localStorage.setItem('dataRT', JSON.stringify(dataRT));
+            localStorage.setItem('dataLinmas', JSON.stringify(dataLinmas));
+        }
+
+        function tampilPesan(id) {
+            const el = document.getElementById(id);
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 2500);
+        }
+
+        function ubahKeLapisan(data, jenis) {
+            if (jenis === 'rw') {
+                return data.map(d => ({
+                    'No': '', 'NIK': d.nik, 'Nama': d.nama, 'Jabatan': d.jabatan, 'No.RW': d.noRW,
+                    'Pekerjaan': d.pekerjaan, 'Alamat': d.alamat, 'No. SK Awal': d.skAwal,
+                    'Masa Berakhir': d.berakhir, 'No.Telp': d.telp, 'No.Rekening': d.rekening
+                }));
+            }
+            if (jenis === 'rt') {
+                return data.map(d => ({
+                    'No': '', 'NIK': d.nik, 'Nama': d.nama, 'Jabatan': d.jabatan, 'No.RW': d.noRW, 'No.RT': d.noRT,
+                    'Pekerjaan': d.pekerjaan, 'Alamat': d.alamat, 'No. SK Awal': d.skAwal,
+                    'Masa Berakhir': d.berakhir, 'No.Telp': d.telp, 'No.Rekening': d.rekening
+                }));
+            }
+            if (jenis === 'linmas') {
+                return data.map(d => ({
+                    'No': '', 'NIK': d.nik, 'Nama': d.nama, 'Jabatan': d.jabatan, 'Wilayah': d.wilayah,
+                    'Pekerjaan': d.pekerjaan, 'No.Telp': d.telp, 'No.Rekening': d.rekening
+                }));
+            }
+        }
+
+        function eksporBagianExcel(jenis) {
+            const nama = { rw: 'Data_RW', rt: 'Data_RT', linmas: 'Data_Linmas' }[jenis];
+            const sumber = { rw: dataRW, rt: dataRT, linmas: dataLinmas }[jenis];
+            const lapisan = XLSX.utils.json_to_sheet(ubahKeLapisan(sumber, jenis));
+            const buku = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(buku, lapisan, nama);
+            XLSX.writeFile(buku, `${nama}_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        function eksporSemuaExcel() {
+            const buku = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(buku, XLSX.utils.json_to_sheet(ubahKeLapisan(dataRW, 'rw')), 'RW');
+            XLSX.utils.book_append_sheet(buku, XLSX.utils.json_to_sheet(ubahKeLapisan(dataRT, 'rt')), 'RT');
+            XLSX.utils.book_append_sheet(buku, XLSX.utils.json_to_sheet(ubahKeLapisan(dataLinmas, 'linmas')), 'Linmas');
+            XLSX.writeFile(buku, `Data_Lengkap_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        function cetakBagian(jenis) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(jenis).classList.add('active');
+            window.print();
+        }
+
+        function dokumenCadangan() {
+            const isi = {
+                versi: '1.3',
+                tanggal: new Date().toISOString(),
+                dataRW, dataRT, dataLinmas
+            };
+            const berkas = new Blob([JSON.stringify(isi, null, 2)], { type: 'application/json' });
+            const tautan = document.createElement('a');
+            tautan.href = URL.createObjectURL(berkas);
+            tautan.download = `Cadangan_Data_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(tautan);
+            tautan.click();
+            document.body.removeChild(tautan);
+            URL.revokeObjectURL(tautan.href);
+        }
+
+        document.getElementById('pulihkan-file').addEventListener('change', e => {
+            const berkas = e.target.files[0];
+            if (!berkas) return;
+            if (!confirm('⚠️ Memulihkan data akan mengganti SEMUA data yang ada sekarang. Lanjutkan?')) {
+                e.target.value = ''; return;
+            }
+            const baca = new FileReader();
+            baca.onload = fungsi => {
+                try {
+                    const isi = JSON.parse(fungsi.target.result);
+                    if (!isi.dataRW || !isi.dataRT || !isi.dataLinmas) throw new Error('Format berkas tidak sesuai');
+                    dataRW = isi.dataRW;
+                    dataRT = isi.dataRT;
+                    dataLinmas = isi.dataLinmas;
+                    simpanData();
+                    tampilRW(); tampilRT(); tampilLinmas();
+                    alert('✅ Data berhasil dipulihkan!');
+                } catch (err) {
+                    alert('❌ Berkas tidak valid: ' + err.message);
+                }
+                e.target.value = '';
+            };
+            baca.readAsText(berkas);
+        });
+
+        function tampilRW(filter='') {
+            const tbody = document.getElementById('rw-body');
+            tbody.innerHTML = '';
+            dataRW.filter(d => !filter || Object.values(d).some(v => String(v).toLowerCase().includes(filter.toLowerCase())))
+                .forEach((d, i) => {
+                    tbody.innerHTML += `<tr>
+                        <td>${i+1}</td>
+                        <td>${d.nik}</td>
+                        <td>${d.nama}</td>
+                        <td>${d.jabatan}</td>
+                        <td>${d.noRW}</td>
+                        <td>${d.pekerjaan}</td>
+                        <td>${d.alamat}</td>
+                        <td>${d.skAwal}</td>
+                        <td class="masa-berakhir">${d.berakhir}</td>
+                        <td>${d.telp}</td>
+                        <td>${d.rekening}</td>
+                        <td class="actions">
+                            <button class="btn-warning" onclick="ubahRW(${i})">Ubah</button>
+                            <button class="btn-danger" onclick="hapusRW(${i})">Hapus</button>
+                        </td>
+                    </tr>`;
+                });
+        }
+
+        document.getElementById('rw-form').addEventListener('submit', e => {
+            e.preventDefault();
+            const data = {
+                nik: document.getElementById('rw-nik').value,
+                nama: document.getElementById('rw-nama').value,
+                jabatan: document.getElementById('rw-jabatan').value,
+                noRW: document.getElementById('rw-norw').value,
+                pekerjaan: document.getElementById('rw-pekerjaan').value,
+                alamat: document.getElementById('rw-alamat').value,
+                skAwal: document.getElementById('rw-skawal').value,
+                berakhir: document.getElementById('rw-berakhir').value,
+                telp: document.getElementById('rw-telp').value,
+                rekening: document.getElementById('rw-rekening').value
+            };
+            if (editIndex.rw !== null) {
+                dataRW[editIndex.rw] = data;
+                editIndex.rw = null;
+            } else {
+                dataRW.push(data);
+            }
+            simpanData(); tampilRW(); tampilPesan('rw-alert');
+            e.target.reset();
+        });
+
+        function ubahRW(i) {
+            const d = dataRW[i];
+            document.getElementById('rw-nik').value = d.nik;
+            document.getElementById('rw-nama').value = d.nama;
+            document.getElementById('rw-jabatan').value = d.jabatan;
+            document.getElementById('rw-norw').value = d.noRW;
+            document.getElementById('rw-pekerjaan').value = d.pekerjaan;
+            document.getElementById('rw-alamat').value = d.alamat;
+            document.getElementById('rw-skawal').value = d.skAwal;
+            document.getElementById('rw-berakhir').value = d.berakhir;
+            document.getElementById('rw-telp').value = d.telp;
+            document.getElementById('rw-rekening').value = d.rekening;
+            editIndex.rw = i;
+        }
+
+        function hapusRW(i) {
+            if (confirm('Yakin ingin menghapus data ini?')) {
+                dataRW.splice(i, 1);
+                simpanData(); tampilRW();
+            }
+        }
+
+        document.getElementById('rw-search').addEventListener('input', e => tampilRW(e.target.value));
+        document.getElementById('rw-reset').addEventListener('click', () => { editIndex.rw = null; });
+
+        function tampilRT(filter='') {
+            const tbody = document.getElementById('rt-body');
+            tbody.innerHTML = '';
+            dataRT.filter(d => !filter || Object.values(d).some(v => String(v).toLowerCase().includes(filter.toLowerCase())))
+                .forEach((d, i) => {
+                    tbody.innerHTML += `<tr>
+                        <td>${i+1}</td>
+                        <td>${d.nik}</td>
+                        <td>${d.nama}</td>
+                        <td>${d.jabatan}</td>
+                        <td>${d.noRW}</td>
+                        <td>${d.noRT}</td>
+                        <td>${d.pekerjaan}</td>
+                        <td>${d.alamat}</td>
+                        <td>${d.skAwal}</td>
+                        <td class="masa-berakhir">${d.berakhir}</td>
+                        <td>${d.telp}</td>
+                        <td>${d.rekening}</td>
+                        <td class="actions">
+                            <button class="btn-warning" onclick="ubahRT(${i})">Ubah</button>
+                            <button class="btn-danger" onclick="hapusRT(${i})">Hapus</button>
+                        </td>
+                    </tr>`;
+                });
+        }
+
+        document.getElementById('rt-form').addEventListener('submit', e => {
+            e.preventDefault();
+            const data = {
+                nik: document.getElementById('rt-nik').value,
+                nama: document.getElementById('rt-nama').value,
+                jabatan: document.getElementById('rt-jabatan').value,
+                noRW: document.getElementById('rt-norw').value,
+                noRT: document.getElementById('rt-nort').value,
+                pekerjaan: document.getElementById('rt-pekerjaan').value,
+                alamat: document.getElementById('rt-alamat').value,
+                skAwal: document.getElementById('rt-skawal').value,
+                berakhir: document.getElementById('rt-berakhir').value,
+                telp: document.getElementById('rt-telp').value,
+                rekening: document.getElementById('rt-rekening').value
+            };
+            if (editIndex.rt !== null) {
+                dataRT[editIndex.rt] = data;
+                editIndex.rt = null;
+            } else {
+                dataRT.push(data);
+            }
+            simpanData(); tampilRT(); tampilPesan('rt-alert');
+            e.target.reset();
+        });
+
+        function ubahRT(i) {
+            const d = dataRT[i];
+            document.getElementById('rt-nik').value = d.nik;
+            document.getElementById('rt-nama').value = d.nama;
+            document.getElementById('rt-jabatan').value = d.jabatan;
+            document.getElementById('rt-norw').value = d.noRW;
+            document.getElementById('rt-nort').value = d.noRT;
+            document.getElementById('rt-pekerjaan').value = d.pekerjaan;
+            document.getElementById('rt-alamat').value = d.alamat;
+            document.getElementById('rt-skawal').value = d.skAwal;
+            document.getElementById('rt-berakhir').value = d.berakhir;
+            document.getElementById('rt-telp').value = d.telp;
+            document.getElementById('rt-rekening').value = d.rekening;
+            editIndex.rt = i;
+        }
+
+        function hapusRT(i) {
+            if (confirm('Yakin ingin menghapus data ini?')) {
+                dataRT.splice(i, 1);
+                simpanData(); tampilRT();
+            }
+        }
+
+        document.getElementById('rt-search').addEventListener('input', e => tampilRT(e.target.value));
+        document.getElementById('rt-reset').addEventListener('click', () => { editIndex.rt = null; });
+
+        function tampilLinmas(filter='') {
+            const tbody = document.getElementById('linmas-body');
+            tbody.innerHTML = '';
+            dataLinmas.filter(d => !filter || Object.values(d).some(v => String(v).toLowerCase().includes(filter.toLowerCase())))
+                .forEach((d, i) => {
+                    tbody.innerHTML += `<tr>
+                        <td>${i+1}</td>
+                        <td>${d.nik}</td>
+                        <td>${d.nama}</td>
+                        <td>${d.jabatan}</td>
+                        <td>${d.wilayah}</td>
+                        <td>${d.pekerjaan}</td>
+                        <td>${d.telp}</td>
+                        <td>${d.rekening}</td>
+                        <td class="actions">
+                            <button class="btn-warning" onclick="ubahLinmas(${i})">Ubah</button>
+                            <button class="btn-danger" onclick="hapusLinmas(${i})">Hapus</button>
+                        </td>
+                    </tr>`;
+                });
+        }
+
+        document.getElementById('linmas-form').addEventListener('submit', e => {
+            e.preventDefault();
+            const data = {
+                nik: document.getElementById('linmas-nik').value,
+                nama: document.getElementById('linmas-nama').value,
+                jabatan: document.getElementById('linmas-jabatan').value,
+                wilayah: document.getElementById('linmas-wilayah').value,
+                pekerjaan: document.getElementById('linmas-pekerjaan').value,
+                telp: document.getElementById('linmas-telp').value,
+                rekening: document.getElementById('linmas-rekening').value
+            };
+            if (editIndex.linmas !== null) {
+                dataLinmas[editIndex.linmas] = data;
+                editIndex.linmas = null;
+            } else {
+                dataLinmas.push(data);
+            }
+            simpanData(); tampilLinmas(); tampilPesan('linmas-alert');
+            e.target.reset();
+        });
+
+        function ubahLinmas(i) {
+            const d = dataLinmas[i];
+            document.getElementById('linmas-nik').value = d.nik;
+            document.getElementById('linmas-nama').value = d.nama;
+            document.getElementById('linmas-jabatan').value = d.jabatan;
+            document.getElementById('linmas-wilayah').value = d.wilayah;
+            document.getElementById('linmas-pekerjaan').value = d.pekerjaan;
+            document.getElementById('linmas-telp').value = d.telp;
+            document.getElementById('linmas-rekening').value = d.rekening;
+            editIndex.linmas = i;
+        }
+
+        function hapusLinmas(i) {
+            if (confirm('Yakin ingin menghapus data ini?')) {
+                dataLinmas.splice(i, 1);
+                simpanData(); tampilLinmas();
+            }
+        }
+
+        document.getElementById('linmas-search').addEventListener('input', e => tampilLinmas(e.target.value));
+        document.getElementById('linmas-reset').addEventListener('click', () => { editIndex.linmas = null; });
+
+        tampilRW(); tampilRT(); tampilLinmas();
+    </script>
+</body>
+</html>
